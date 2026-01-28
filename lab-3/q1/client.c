@@ -4,6 +4,7 @@
 #include<netinet/in.h>
 #include<arpa/inet.h>
 #include<sys/socket.h>
+#include<sys/wait.h>
 #include<unistd.h>  //has close()
 
 
@@ -34,10 +35,40 @@ int main(){
 
     getsockname(sockfd,(struct sockaddr*)&clientaddr,&client_len);
     printf("Connected from client using port: %d \n",ntohs(clientaddr.sin_port));
+    
+    char recvbuf[MAXSIZE];
+    char sendbuf[MAXSIZE];
 
-    char buf[MAXSIZE];
-    while(1){
-        memset(&buf,0,MAXSIZE);
+    pid_t pid = fork();
+    if(pid == 0){
+        while(1){
+            memset(recvbuf,0,sizeof(recvbuf));
+            int readn = recv(sockfd,recvbuf,sizeof(recvbuf) - 1,0);
+            if(readn <= 0){
+                printf("server disconnected.");
+                break;
+            }
+            recvbuf[readn] = '\0';
+            printf("received: %s\n",recvbuf);
+        }
+        close(sockfd);
+        exit(0);
+    }else{
+        while(1){
+            memset(sendbuf,0,sizeof(sendbuf));
+            printf("Enter data to send: ");
+            if(fgets(sendbuf,sizeof(sendbuf),stdin) == NULL){
+                printf("couldnt get data from stdin.");
+                break;
+            }
+            sendbuf[strcspn(sendbuf,"\n")] = '\0';
+
+            int sendn = send(sockfd,sendbuf,strlen(sendbuf),0);
+            if(sendn <= 0){
+                printf("couldnt send any bytes.");
+                break;
+            }
+        }
+        close(sockfd);
     }
-    close(sockfd);
 }

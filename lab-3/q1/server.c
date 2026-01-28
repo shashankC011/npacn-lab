@@ -41,37 +41,51 @@ int main(){
         close(sockfd);
         return 1;
     }
+
     printf("\nSuccessfully connected to client with port: %d\n",ntohs(clientaddr.sin_port));
 
-    char recvbuf[MAXSIZE];
     pid_t pid = fork();
+
+    //---- CHILD :RECEIVER----
     if (pid == 0){
+        close(sockfd);
+        char recvbuf[MAXSIZE];
         int recvn;
         while(1){
             memset(&recvbuf,0,sizeof(recvbuf));
-            recvn = recv(sockfd,&recvbuf,sizeof(recvbuf)-1,NULL);
-            if(recvn < 0){
-                printf("Server disconnected.");
+            recvn = recv(clientsockfd,recvbuf,sizeof(recvbuf)-1,0);
+
+            if(recvn <= 0){
+                printf("client disconnected."); 
                 break;
             }
+
             recvbuf[recvn] = '\0';
             printf("received: %s \n",recvbuf);
         }
+        close(clientsockfd);
+        exit(0);
     }else{
         int sendN;
         char sendbuf[MAXSIZE];
         while(1){
-            memset(&sendbuf,0,sizeof(recvbuf));
+            memset(sendbuf,0,sizeof(sendbuf));
             printf("Enter text to send: ");
-            if(fgets(sendbuf,sizeof(sendbuf),stdin)== NULL){
 
+            if(fgets(sendbuf,sizeof(sendbuf),stdin)== NULL){
+                printf("couldnt get data from stdin.");
+                break;
             }
-            sendN = send(sockfd,sendbuf,sizeof(sendbuf),NULL);
+
+            sendbuf[strcspn(sendbuf,"\n")] = '\0';
+
+            sendN = send(clientsockfd,sendbuf,strlen(sendbuf),0);
+            if(sendN <= 0){
+                printf("couldnt send any bytes.");
+                break;
+            }
         }
+        close(clientsockfd);
     }
-    if(wait(NULL) == -1){
-        perror("Error waiting for child process.");
-    }
-    close(sockfd);
-    close(clientsockfd);
+    return 0;
 }
